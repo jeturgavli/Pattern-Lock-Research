@@ -12,7 +12,7 @@
 - Length 9: 140,704
 
 
-- Android rules prohibit jumping over unused dots.
+## Android rules prohibit jumping over unused dots.
 - (Example: 1→3 not allowed unless 2 already used.)
 - Minimum pattern length = 4, maximum = 9.
 - Total valid unique patterns = 389,112.
