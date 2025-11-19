@@ -16,3 +16,25 @@
 - (Example: 1→3 not allowed unless 2 already used.)
 - Minimum pattern length = 4, maximum = 9.
 - Total valid unique patterns = 3,89,112.
+
+# Human-Like Android Pattern Lock Counts (4–9 Dots)
+
+This table shows the **total number of valid Android pattern locks** based purely on **human-like rules**.
+
+### Rules Considered:
+
+1. **Adjacent Moves Allowed:** Moves between dots that are horizontally, vertically, or diagonally within **100px** are allowed.
+2. **Center Dot Rule:** The center dot `5` can always be used in a move.
+3. **Skip Rules Ignored:** Standard Android skip rules are **not considered** here.
+4. **No Repetition:** Each dot can appear **only once** in a single pattern.
+
+| Dot Count | Total Human-Like Patterns |
+| --------- | ------------------------- |
+| 4         | 496                       |
+| 5         | 1,632                     |
+| 6         | 4,032                     |
+| 7         | 8,960                     |
+| 8         | 15,360                    |
+| 9         | 20,736                    |
+
+> **Note:** These numbers can be exactly obtained using a DFS generation considering **only human adjacency + center dot rules**, without generating images.
