@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Pattern Lock Research</title>
+    <style>
+        h1{
+            text-align: center;
+            color: black;
+            font-family: Arial, sans-serif;
+        }
+        /* Full-screen SVG background */
+        #lockSvg {
+            width: 100%;
+            height: 100%;
+            background-color: crimson;
+        }
+
+        .svg-container {
+            max-width: 80vh;
+            margin: 0 auto;
+        }
+
+        /* Lines connecting dots */
+        svg line.connection {
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke: black;
+        }
+
+        /* Dots style */
+        svg circle.dot {
+            r: 2;
+            fill: black;
+            stroke: transparent;
+            stroke-width: 13.5;
+        }
+
+        /* Active dot highlight */
+        svg .active-dots circle {
+            r: 6;
+            fill: white;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Pattern Lock Research</h1>
+
+    <div class="svg-container">
+        <svg id="lockSvg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <g class="active-dots"></g>
+            <g class="connections"></g>
+            <g class="all-dots">
+                <!-- Row 1 -->
+                <circle cx="25" cy="25" class="dot" />
+                <circle cx="50" cy="25" class="dot" />
+                <circle cx="75" cy="25" class="dot" />
+                <!-- Row 2 -->
+                <circle cx="25" cy="50" class="dot" />
+                <circle cx="50" cy="50" class="dot" />
+                <circle cx="75" cy="50" class="dot" />
+                <!-- Row 3 -->
+                <circle cx="25" cy="75" class="dot" />
+                <circle cx="50" cy="75" class="dot" />
+                <circle cx="75" cy="75" class="dot" />
+            </g>
+        </svg>
+    </div>
+
+    <script src="vendor.js"></script>
+
+    <script>
+        (function () {
+            const SVG_NS = "http://www.w3.org/2000/svg";
+
+            // Select main elements
+            const svgCanvas = $('svg#lockSvg');
+            const dots = svgCanvas.find('.all-dots circle');
+            const activeDotGroup = svgCanvas.find('.active-dots');
+            const connectionGroup = svgCanvas.find('.connections');
+
+            let activePattern = [];      // Array of selected dots
+            let currentConnectionLine;   // Currently drawing line
+            let previousDot;             // Last selected dot
+
+            /**
+             * Checks if a dot is already in the current pattern
+             */
+            function isDotSelected(dot) {
+                return activePattern.includes(dot);
+            }
+
+            /**
+             * Creates a line connecting current dot to mouse/touch
+             */
+            function onMoveHandler(line) {
+                return function (event) {
+                    event.preventDefault();
+
+                    const { x, y } = getRelativeMousePos(event);
+                    line.setAttribute('x2', x);
+                    line.setAttribute('y2', y);
+
+                    const clientX = event.clientX || event.originalEvent.touches[0].clientX;
+                    const clientY = event.clientY || event.originalEvent.touches[0].clientY;
+                    const hoveredDot = document.elementFromPoint(clientX, clientY);
+
+                    if (hoveredDot.tagName === 'circle' && hoveredDot !== previousDot && !isDotSelected(hoveredDot)) {
+                        completeLine(currentConnectionLine, hoveredDot);
+                        currentConnectionLine = startDotLine(hoveredDot);
+                        console.log("Selected dot coordinates:", hoveredDot.getAttribute('cx'), hoveredDot.getAttribute('cy'));
+                    }
+                }
+            }
+
+            /**
+             * Start a new line from a dot
+             */
+            function startDotLine(dot) {
+                previousDot = dot;
+                activePattern.push(dot);
+
+                const cx = dot.getAttribute('cx');
+                const cy = dot.getAttribute('cy');
+
+                // Create the line
+                const line = document.createElementNS(SVG_NS, "line");
+                line.classList.add("connection");
+                line.setAttribute('x1', cx);
+                line.setAttribute('y1', cy);
+                line.setAttribute('x2', cx);
+                line.setAttribute('y2', cy);
+                connectionGroup.append(line);
+
+                // Create active dot highlight
+                const activeCircle = document.createElementNS(SVG_NS, "circle");
+                activeCircle.setAttribute('cx', cx);
+                activeCircle.setAttribute('cy', cy);
+                activeDotGroup.append(activeCircle);
+
+                // Attach move event listener
+                svgCanvas.on('mousemove touchmove', onMoveHandler(line));
+
+                // Cleanup on mouseup/touchend
+                $(document).one('mouseup touchend', () => {
+                    line.remove();
+                    activeCircle.remove();
+                    svgCanvas.off();
+                });
+
+                triggerVibration();
+                return line;
+            }
+
+            /**
+             * Finalize the line to the new dot
+             */
+            function completeLine(line, dot) {
+                svgCanvas.off();
+                const cx = dot.getAttribute('cx');
+                const cy = dot.getAttribute('cy');
+                line.setAttribute('x2', cx);
+                line.setAttribute('y2', cy);
+            }
+
+            /**
+             * Device vibration feedback
+             */
+            function triggerVibration() {
+                navigator.vibrate = navigator.vibrate || navigator.webkitVibrate || navigator.mozVibrate || navigator.msVibrate;
+                if (navigator.vibrate) navigator.vibrate(25);
+            }
+
+            /**
+             * Calculate mouse/touch position relative to SVG
+             */
+            function getRelativeMousePos(event) {
+                const clientX = event.clientX || event.originalEvent.touches[0].clientX;
+                const clientY = event.clientY || event.originalEvent.touches[0].clientY;
+                const offset = svgCanvas.offset();
+                return {
+                    x: (clientX - offset.left) / svgCanvas.width() * 100,
+                    y: (clientY - offset.top) / svgCanvas.height() * 100
+                };
+            }
+
+            // Start tracking pattern on dot press
+            dots.on('mousedown touchstart', (event) => {
+                event.preventDefault();
+                currentConnectionLine = startDotLine(event.target);
+
+                const endEvent = event.type === 'touchstart' ? 'touchend' : 'mouseup';
+                $(document).one(endEvent, () => {
+                    dots.off('mouseenter touchenter');
+                    activePattern = [];
+                });
+            });
+        })();
+    </script>
+</body>
+
+</html>
