@@ -4,12 +4,14 @@
 
 ## Counts by pattern length:
 
-- Length 4: 1,624
-- Length 5: 7,152
-- Length 6: 26,016
-- Length 7: 72,912
-- Length 8: 1,40,704
-- Length 9: 1,40,704
+| Dot Count | Total Patterns |
+| --------- | ------------------------- |
+| 4         | 1,624                     |
+| 5         | 7,152                     |
+| 6         | 26,016                    |
+| 7         | 72,912                    |
+| 8         | 1,40,704                  |
+| 9         | 1,40,704                  |
 
 ## Android rules prohibit jumping over unused dots.
 
