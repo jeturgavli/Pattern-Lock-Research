@@ -32,21 +32,16 @@ def is_human_move_ok(a, b):
     dx = abs(ax - bx)
     dy = abs(ay - by)
 
-    # same dot invalid
     if a == b:
         return False
 
-    # Center 5 is always allowed (common human move)
     if b == 5:
         return True
 
-    # Adjacent horizontally / vertically / diagonally (≤ 100 px)
     if dx <= 100 and dy <= 100:
         return True
 
-    # far jumps are not allowed
     return False
-
 
 # ------------------- DFS generator -------------------
 def dfs(visited, cur, length, patterns):
@@ -54,23 +49,21 @@ def dfs(visited, cur, length, patterns):
         patterns.append(visited[:])
         return
 
-    for next_dot in range(1,10):
+    for next_dot in range(1, 10):
         if next_dot not in visited:
 
-            # -------- Human Psychology Rule --------
             if not is_human_move_ok(cur, next_dot):
                 continue
 
-            # -------- Android Skip Rule --------
             if skip[cur][next_dot] == 0 or skip[cur][next_dot] in visited:
-                dfs(visited+[next_dot], next_dot, length, patterns)
+                dfs(visited + [next_dot], next_dot, length, patterns)
 
 # ------------------- Load USED patterns -------------------
 def load_used_patterns(used_folder):
     used = set()
     if not os.path.exists(used_folder):
         return used
-        
+
     for file in os.listdir(used_folder):
         if file.endswith(".txt"):
             with open(os.path.join(used_folder, file), "r") as f:
@@ -87,13 +80,11 @@ def draw_pattern(pattern, output_folder):
     img = Image.new("RGB", (img_size, img_size+40), "white")
     draw = ImageDraw.Draw(img)
 
-    # draw pattern lines
     for i in range(len(pattern)-1):
         x1, y1 = positions[pattern[i]]
         x2, y2 = positions[pattern[i+1]]
         draw.line((x1, y1, x2, y2), width=4, fill="black")
 
-    # draw dots
     for dot, (x, y) in positions.items():
         fill_color = "orange" if dot in pattern else "lightgrey"
         draw.ellipse(
@@ -106,7 +97,6 @@ def draw_pattern(pattern, output_folder):
         h = bbox[3] - bbox[1]
         draw.text((x - w/2, y - h/2), str(dot), font=font, fill="black")
 
-    # pattern text
     pattern_text = ",".join(map(str, pattern))
     draw.text((img_size/2, img_size+10), pattern_text, anchor="mm", font=font, fill="black")
 
@@ -114,53 +104,74 @@ def draw_pattern(pattern, output_folder):
     img.save(os.path.join(output_folder, file_name), "JPEG")
 
 
-# ------------------- Main -------------------
+# ------------------- MAIN WITH LOOP + EXIT -------------------
 if __name__ == "__main__":
     while True:
+        print("\n============================")
+        print(" ANDROID HUMAN-LIKE PATTERN")
+        print("============================")
+        print("Press 'q' to exit.\n")
+
+        # ------------------- DOT INPUT -------------------
+        dot_in = input("Enter DOT count (4-9) or 'q' to quit: ").strip()
+        if dot_in.lower() == "q":
+            print("\nExiting program... Goodbye!\n")
+            break
+
         try:
-            dot_count = int(input("Enter DOT count (4-9): "))
-            if 4 <= dot_count <= 9:
-                break
+            dot_count = int(dot_in)
+            if not (4 <= dot_count <= 9):
+                print("Invalid! Enter 4 to 9 only.")
+                continue
         except:
-            pass
-        print("Invalid input. Enter 4-9.")
-
-    while True:
-        try:
-            start_dot = int(input("Enter start dot (1-9): "))
-            if 1 <= start_dot <= 9:
-                break
-        except:
-            pass
-        print("Invalid input. Enter 1-9.")
-
-    # Load USED patterns
-    used_folder = os.path.join("..", "Used")
-    used_patterns = load_used_patterns(used_folder)
-
-    used_key_set = {"-".join(list(p)) for p in used_patterns}
-
-    patterns = []
-    dfs([start_dot], start_dot, dot_count, patterns)
-
-    print(f"Total HUMAN-LIKE valid patterns starting with {start_dot}: {len(patterns)}")
-
-    main_folder = os.path.join("..","Output", f"patterns_{dot_count}_dot_HUMAN")
-    sub_folder = os.path.join(main_folder, f"patterns_start_{start_dot}")
-    os.makedirs(sub_folder, exist_ok=True)
-
-    saved = 0
-    skipped = 0
-
-    for pattern in patterns:
-        key = "-".join(map(str, pattern))
-        if key in used_key_set:
-            skipped += 1
+            print("Invalid input.")
             continue
 
-        draw_pattern(pattern, sub_folder)
-        saved += 1
+        # ------------------- START DOT INPUT -------------------
+        start_in = input("Enter START dot (1-9) or 'q' to quit: ").strip()
+        if start_in.lower() == "q":
+            print("\nExiting program... Goodbye!\n")
+            break
 
-    print(f"\n✔ Saved (unique + human-like) patterns: {saved}")
-    print(f"✘ Skipped (used): {skipped}")
-    print(f"\nImages saved in → {sub_folder}")
+        try:
+            start_dot = int(start_in)
+            if not (1 <= start_dot <= 9):
+                print("Invalid! Enter 1 to 9 only.")
+                continue
+        except:
+            print("Invalid input.")
+            continue
+
+        # ------------------- Load USED -------------------
+        used_folder = os.path.join("..", "Used")
+        used_patterns = load_used_patterns(used_folder)
+        used_key_set = {"-".join(list(p)) for p in used_patterns}
+
+        patterns = []
+        dfs([start_dot], start_dot, dot_count, patterns)
+
+        print(f"\nTotal HUMAN-LIKE valid patterns starting with {start_dot}: {len(patterns)}")
+
+        main_folder = os.path.join("..", "Output", f"patterns_{dot_count}_dot_HUMAN")
+        sub_folder = os.path.join(main_folder, f"patterns_start_{start_dot}")
+        os.makedirs(sub_folder, exist_ok=True)
+
+        saved = 0
+        skipped = 0
+
+        for pattern in patterns:
+            key = "-".join(map(str, pattern))
+            if key in used_key_set:
+                skipped += 1
+                continue
+
+            draw_pattern(pattern, sub_folder)
+            saved += 1
+
+        print(f"\n✔ Saved (unique + human-like) patterns: {saved}")
+        print(f"✘ Skipped (used): {skipped}")
+        print(f"Images saved in → {sub_folder}")
+
+        print("\n----------------------------------------")
+        print(" Next round starting... (Press 'q' when asked)")
+        print("----------------------------------------\n")
