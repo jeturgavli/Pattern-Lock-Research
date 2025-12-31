@@ -32,35 +32,63 @@
     </div>
 
     <script src="vendor.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        window.sb = window.supabase.createClient(
+            "https://idwofjhbmanvyzbxtmcr.supabase.co",
+            "sb_publishable_9JcmwpGpBGCH6PqhfCPwuQ_cUn5rTFl"
+        );
+
+        async function submitPattern(patternStr) {
+            try {
+                const { data, error } = await window.sb
+                    .from("pattern_votes")
+                    .select("vote_count")
+                    .eq("pattern", patternStr)
+                    .maybeSingle();
+
+                if (error) {
+                    console.error("Supabase error:", error);
+                    return;
+                }
+
+                if (data) {
+                    await window.sb
+                        .from("pattern_votes")
+                        .update({ vote_count: data.vote_count + 1 })
+                        .eq("pattern", patternStr);
+                } else {
+                    await window.sb
+                        .from("pattern_votes")
+                        .insert({ pattern: patternStr, vote_count: 1 });
+                }
+                console.log("Pattern submitted:", patternStr);
+            } catch (err) {
+                console.error("Submit failed:", err);
+            }
+        }
+    </script>
+
 
     <script>
         (function () {
             const SVG_NS = "http://www.w3.org/2000/svg";
-
-            // Select main elements
             const svgCanvas = $('svg#lockSvg');
             const dots = svgCanvas.find('.all-dots circle');
             const activeDotGroup = svgCanvas.find('.active-dots');
             const connectionGroup = svgCanvas.find('.connections');
 
-            let activePattern = [];      // Array of selected dots
-            let currentConnectionLine;   // Currently drawing line
-            let previousDot;             // Last selected dot
+            let activePattern = [];
+            let currentConnectionLine;
+            let previousDot;
 
-            /**
-             * Checks if a dot is already in the current pattern
-             */
             function isDotSelected(dot) {
                 return activePattern.includes(dot);
             }
 
-            /**
-             * Creates a line connecting current dot to mouse/touch
-             */
             function onMoveHandler(line) {
                 return function (event) {
                     event.preventDefault();
-
                     const { x, y } = getRelativeMousePos(event);
                     line.setAttribute('x2', x);
                     line.setAttribute('y2', y);
@@ -72,14 +100,10 @@
                     if (hoveredDot.tagName === 'circle' && hoveredDot !== previousDot && !isDotSelected(hoveredDot)) {
                         completeLine(currentConnectionLine, hoveredDot);
                         currentConnectionLine = startDotLine(hoveredDot);
-                        console.log("Selected dot coordinates:", hoveredDot.getAttribute('cx'), hoveredDot.getAttribute('cy'));
                     }
                 }
             }
 
-            /**
-             * Start a new line from a dot
-             */
             function startDotLine(dot) {
                 previousDot = dot;
                 activePattern.push(dot);
@@ -87,7 +111,6 @@
                 const cx = dot.getAttribute('cx');
                 const cy = dot.getAttribute('cy');
 
-                // Create the line
                 const line = document.createElementNS(SVG_NS, "line");
                 line.classList.add("connection");
                 line.setAttribute('x1', cx);
@@ -96,29 +119,29 @@
                 line.setAttribute('y2', cy);
                 connectionGroup.append(line);
 
-                // Create active dot highlight
                 const activeCircle = document.createElementNS(SVG_NS, "circle");
                 activeCircle.setAttribute('cx', cx);
                 activeCircle.setAttribute('cy', cy);
                 activeDotGroup.append(activeCircle);
 
-                // Attach move event listener
                 svgCanvas.on('mousemove touchmove', onMoveHandler(line));
 
-                // Cleanup on mouseup/touchend
-                $(document).one('mouseup touchend', () => {
+                $(document).one('mouseup touchend', async () => {
                     line.remove();
                     activeCircle.remove();
                     svgCanvas.off();
+
+                    // Submit pattern to Supabase
+                    const patternStr = activePattern.map(d => d.getAttribute('cx') + d.getAttribute('cy')).join('');
+                    await submitPattern(patternStr);
+
+                    activePattern = [];
                 });
 
                 triggerVibration();
                 return line;
             }
 
-            /**
-             * Finalize the line to the new dot
-             */
             function completeLine(line, dot) {
                 svgCanvas.off();
                 const cx = dot.getAttribute('cx');
@@ -127,17 +150,11 @@
                 line.setAttribute('y2', cy);
             }
 
-            /**
-             * Device vibration feedback
-             */
             function triggerVibration() {
                 navigator.vibrate = navigator.vibrate || navigator.webkitVibrate || navigator.mozVibrate || navigator.msVibrate;
                 if (navigator.vibrate) navigator.vibrate(25);
             }
 
-            /**
-             * Calculate mouse/touch position relative to SVG
-             */
             function getRelativeMousePos(event) {
                 const clientX = event.clientX || event.originalEvent.touches[0].clientX;
                 const clientY = event.clientY || event.originalEvent.touches[0].clientY;
@@ -148,24 +165,11 @@
                 };
             }
 
-            // Start tracking pattern on dot press
             dots.on('mousedown touchstart', (event) => {
                 event.preventDefault();
                 currentConnectionLine = startDotLine(event.target);
-
-                const endEvent = event.type === 'touchstart' ? 'touchend' : 'mouseup';
-                $(document).one(endEvent, () => {
-                    dots.off('mouseenter touchenter');
-                    activePattern = [];
-                });
             });
         })();
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        const supabaseUrl = "https://YOUR_PROJECT_ID.supabase.co"; // replace with your Supabase project URL
-        const supabaseKey = "sb_publishable_9JcmwpGpBGCH6PqhfCPwuQ_cUn5rTFl"; // aapki public key
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
     </script>
 </body>
 
