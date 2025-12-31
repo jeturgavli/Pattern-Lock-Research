@@ -16,24 +16,26 @@
             <g class="connections"></g>
             <g class="all-dots">
                 <!-- Row 1 -->
-                <circle cx="25" cy="25" class="dot" />
-                <circle cx="50" cy="25" class="dot" />
-                <circle cx="75" cy="25" class="dot" />
+                <circle cx="25" cy="25" class="dot" data-id="1"/>
+                <circle cx="50" cy="25" class="dot" data-id="2"/>
+                <circle cx="75" cy="25" class="dot" data-id="3"/>
                 <!-- Row 2 -->
-                <circle cx="25" cy="50" class="dot" />
-                <circle cx="50" cy="50" class="dot" />
-                <circle cx="75" cy="50" class="dot" />
+                <circle cx="25" cy="50" class="dot" data-id="4"/>
+                <circle cx="50" cy="50" class="dot" data-id="5"/>
+                <circle cx="75" cy="50" class="dot" data-id="6"/>
                 <!-- Row 3 -->
-                <circle cx="25" cy="75" class="dot" />
-                <circle cx="50" cy="75" class="dot" />
-                <circle cx="75" cy="75" class="dot" />
+                <circle cx="25" cy="75" class="dot" data-id="7"/>
+                <circle cx="50" cy="75" class="dot" data-id="8"/>
+                <circle cx="75" cy="75" class="dot" data-id="9"/>
             </g>
         </svg>
     </div>
 
     <script src="vendor.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script>
+        // Supabase client
         window.sb = window.supabase.createClient(
             "https://idwofjhbmanvyzbxtmcr.supabase.co",
             "sb_publishable_9JcmwpGpBGCH6PqhfCPwuQ_cUn5rTFl"
@@ -68,7 +70,6 @@
             }
         }
     </script>
-
 
     <script>
         (function () {
@@ -131,8 +132,8 @@
                     activeCircle.remove();
                     svgCanvas.off();
 
-                    // Submit pattern to Supabase
-                    const patternStr = activePattern.map(d => d.getAttribute('cx') + d.getAttribute('cy')).join('');
+                    // Use data-id for logical pattern
+                    const patternStr = activePattern.map(d => d.dataset.id).join('');
                     await submitPattern(patternStr);
 
                     activePattern = [];
