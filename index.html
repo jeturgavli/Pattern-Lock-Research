@@ -12,18 +12,17 @@
 
     <div class="svg-container">
         <svg id="lockSvg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <g class="active-dots"></g>
             <g class="connections"></g>
+            <g class="active-dots"></g>
             <g class="all-dots">
-                <!-- Row 1 -->
                 <circle cx="25" cy="25" class="dot" data-id="1"/>
                 <circle cx="50" cy="25" class="dot" data-id="2"/>
                 <circle cx="75" cy="25" class="dot" data-id="3"/>
-                <!-- Row 2 -->
+
                 <circle cx="25" cy="50" class="dot" data-id="4"/>
                 <circle cx="50" cy="50" class="dot" data-id="5"/>
                 <circle cx="75" cy="50" class="dot" data-id="6"/>
-                <!-- Row 3 -->
+
                 <circle cx="25" cy="75" class="dot" data-id="7"/>
                 <circle cx="50" cy="75" class="dot" data-id="8"/>
                 <circle cx="75" cy="75" class="dot" data-id="9"/>
@@ -35,128 +34,132 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // Supabase client
+        /* ---------- SUPABASE ---------- */
         window.sb = window.supabase.createClient(
             "https://idwofjhbmanvyzbxtmcr.supabase.co",
             "sb_publishable_9JcmwpGpBGCH6PqhfCPwuQ_cUn5rTFl"
         );
 
         async function submitPattern(patternStr) {
-            try {
-                const { data, error } = await window.sb
+            const { data } = await window.sb
+                .from("pattern_votes")
+                .select("vote_count")
+                .eq("pattern", patternStr)
+                .maybeSingle();
+
+            if (data) {
+                await window.sb
                     .from("pattern_votes")
-                    .select("vote_count")
-                    .eq("pattern", patternStr)
-                    .maybeSingle();
-
-                if (error) {
-                    console.error("Supabase error:", error);
-                    return;
-                }
-
-                if (data) {
-                    await window.sb
-                        .from("pattern_votes")
-                        .update({ vote_count: data.vote_count + 1 })
-                        .eq("pattern", patternStr);
-                } else {
-                    await window.sb
-                        .from("pattern_votes")
-                        .insert({ pattern: patternStr, vote_count: 1 });
-                }
-                console.log("Pattern submitted:", patternStr);
-            } catch (err) {
-                console.error("Submit failed:", err);
+                    .update({ vote_count: data.vote_count + 1 })
+                    .eq("pattern", patternStr);
+            } else {
+                await window.sb
+                    .from("pattern_votes")
+                    .insert({ pattern: patternStr, vote_count: 1 });
             }
+
+            console.log("Pattern submitted:", patternStr);
         }
     </script>
 
     <script>
         (function () {
             const SVG_NS = "http://www.w3.org/2000/svg";
-            const svgCanvas = $('svg#lockSvg');
-            const dots = svgCanvas.find('.all-dots circle');
+            const svgCanvas = $('#lockSvg');
+            const dots = svgCanvas.find('.dot');
             const activeDotGroup = svgCanvas.find('.active-dots');
             const connectionGroup = svgCanvas.find('.connections');
 
             let activePattern = [];
-            let currentConnectionLine;
-            let previousDot;
+            let currentLine = null;
+            let previousDot = null;
+            let isDrawing = false;
 
-            function isDotSelected(dot) {
-                return activePattern.includes(dot);
+            function startPattern(dot) {
+                isDrawing = true;
+                addDot(dot);
+
+                svgCanvas.on('mousemove touchmove', onMove);
+                $(document).one('mouseup touchend', finishPattern);
             }
 
-            function onMoveHandler(line) {
-                return function (event) {
-                    event.preventDefault();
-                    const { x, y } = getRelativeMousePos(event);
-                    line.setAttribute('x2', x);
-                    line.setAttribute('y2', y);
+            function onMove(event) {
+                if (!isDrawing) return;
 
-                    const clientX = event.clientX || event.originalEvent.touches[0].clientX;
-                    const clientY = event.clientY || event.originalEvent.touches[0].clientY;
-                    const hoveredDot = document.elementFromPoint(clientX, clientY);
+                event.preventDefault();
+                const { x, y } = getRelativePos(event);
 
-                    if (hoveredDot.tagName === 'circle' && hoveredDot !== previousDot && !isDotSelected(hoveredDot)) {
-                        completeLine(currentConnectionLine, hoveredDot);
-                        currentConnectionLine = startDotLine(hoveredDot);
-                    }
+                if (currentLine) {
+                    currentLine.setAttribute('x2', x);
+                    currentLine.setAttribute('y2', y);
+                }
+
+                const cx = event.clientX || event.originalEvent.touches[0].clientX;
+                const cy = event.clientY || event.originalEvent.touches[0].clientY;
+                const el = document.elementFromPoint(cx, cy);
+
+                if (el && el.classList.contains('dot') && !activePattern.includes(el)) {
+                    addDot(el);
                 }
             }
 
-            function startDotLine(dot) {
-                previousDot = dot;
+            function addDot(dot) {
                 activePattern.push(dot);
 
                 const cx = dot.getAttribute('cx');
                 const cy = dot.getAttribute('cy');
 
-                const line = document.createElementNS(SVG_NS, "line");
-                line.classList.add("connection");
+                if (previousDot) {
+                    currentLine.setAttribute('x2', cx);
+                    currentLine.setAttribute('y2', cy);
+                }
+
+                const line = document.createElementNS(SVG_NS, 'line');
                 line.setAttribute('x1', cx);
                 line.setAttribute('y1', cy);
                 line.setAttribute('x2', cx);
                 line.setAttribute('y2', cy);
+                line.classList.add('connection');
                 connectionGroup.append(line);
+                currentLine = line;
 
-                const activeCircle = document.createElementNS(SVG_NS, "circle");
-                activeCircle.setAttribute('cx', cx);
-                activeCircle.setAttribute('cy', cy);
-                activeDotGroup.append(activeCircle);
+                const circle = document.createElementNS(SVG_NS, 'circle');
+                circle.setAttribute('cx', cx);
+                circle.setAttribute('cy', cy);
+                circle.classList.add('active-dot');
+                activeDotGroup.append(circle);
 
-                svgCanvas.on('mousemove touchmove', onMoveHandler(line));
-
-                $(document).one('mouseup touchend', async () => {
-                    line.remove();
-                    activeCircle.remove();
-                    svgCanvas.off();
-
-                    // Use data-id for logical pattern
-                    const patternStr = activePattern.map(d => d.dataset.id).join('');
-                    await submitPattern(patternStr);
-
-                    activePattern = [];
-                });
-
-                triggerVibration();
-                return line;
+                previousDot = dot;
             }
 
-            function completeLine(line, dot) {
-                svgCanvas.off();
-                const cx = dot.getAttribute('cx');
-                const cy = dot.getAttribute('cy');
-                line.setAttribute('x2', cx);
-                line.setAttribute('y2', cy);
+            function finishPattern() {
+                if (!isDrawing) return;
+                isDrawing = false;
+
+                svgCanvas.off('mousemove touchmove');
+
+                // ❌ Reject less than 4 dots
+                if (activePattern.length < 4) {
+                    resetUI();
+                    return;
+                }
+
+                const patternStr = activePattern.map(d => d.dataset.id).join('');
+                submitPattern(patternStr);
+
+                // ✅ Mobile-style reset
+                resetUI();
             }
 
-            function triggerVibration() {
-                navigator.vibrate = navigator.vibrate || navigator.webkitVibrate || navigator.mozVibrate || navigator.msVibrate;
-                if (navigator.vibrate) navigator.vibrate(25);
+            function resetUI() {
+                activePattern = [];
+                previousDot = null;
+                currentLine = null;
+                activeDotGroup.empty();
+                connectionGroup.empty();
             }
 
-            function getRelativeMousePos(event) {
+            function getRelativePos(event) {
                 const clientX = event.clientX || event.originalEvent.touches[0].clientX;
                 const clientY = event.clientY || event.originalEvent.touches[0].clientY;
                 const offset = svgCanvas.offset();
@@ -166,10 +169,11 @@
                 };
             }
 
-            dots.on('mousedown touchstart', (event) => {
-                event.preventDefault();
-                currentConnectionLine = startDotLine(event.target);
+            dots.on('mousedown touchstart', function (e) {
+                e.preventDefault();
+                if (!isDrawing) startPattern(this);
             });
+
         })();
     </script>
 </body>
