@@ -71,6 +71,27 @@
             const activeDotGroup = svgCanvas.find('.active-dots');
             const connectionGroup = svgCanvas.find('.connections');
 
+            /* ---------- ANDROID DOT MAP ---------- */
+            const DOT_MAP = {
+                1:{x:0,y:0}, 2:{x:1,y:0}, 3:{x:2,y:0},
+                4:{x:0,y:1}, 5:{x:1,y:1}, 6:{x:2,y:1},
+                7:{x:0,y:2}, 8:{x:1,y:2}, 9:{x:2,y:2}
+            };
+
+            function getMiddleDot(fromId, toId) {
+                const a = DOT_MAP[fromId];
+                const b = DOT_MAP[toId];
+                const mx = (a.x + b.x) / 2;
+                const my = (a.y + b.y) / 2;
+
+                for (const id in DOT_MAP) {
+                    if (DOT_MAP[id].x === mx && DOT_MAP[id].y === my) {
+                        return id;
+                    }
+                }
+                return null;
+            }
+
             let activePattern = [];
             let currentLine = null;
             let previousDot = null;
@@ -79,17 +100,15 @@
             function startPattern(dot) {
                 isDrawing = true;
                 addDot(dot);
-
                 svgCanvas.on('mousemove touchmove', onMove);
                 $(document).one('mouseup touchend', finishPattern);
             }
 
             function onMove(event) {
                 if (!isDrawing) return;
-
                 event.preventDefault();
-                const { x, y } = getRelativePos(event);
 
+                const { x, y } = getRelativePos(event);
                 if (currentLine) {
                     currentLine.setAttribute('x2', x);
                     currentLine.setAttribute('y2', y);
@@ -99,12 +118,31 @@
                 const cy = event.clientY || event.originalEvent.touches[0].clientY;
                 const el = document.elementFromPoint(cx, cy);
 
-                if (el && el.classList.contains('dot') && !activePattern.includes(el)) {
+                if (el && el.classList.contains('dot')) {
                     addDot(el);
                 }
             }
 
+            /* ---------- ANDROID STYLE ADD DOT ---------- */
             function addDot(dot) {
+                if (activePattern.includes(dot)) return;
+
+                const currentId = dot.dataset.id;
+
+                if (previousDot) {
+                    const prevId = previousDot.dataset.id;
+                    const middleId = getMiddleDot(prevId, currentId);
+
+                    if (middleId) {
+                        const middleDot = document.querySelector(
+                            `.dot[data-id="${middleId}"]`
+                        );
+                        if (middleDot && !activePattern.includes(middleDot)) {
+                            addDot(middleDot); // AUTO-SKIP
+                        }
+                    }
+                }
+
                 activePattern.push(dot);
 
                 const cx = dot.getAttribute('cx');
@@ -136,10 +174,8 @@
             function finishPattern() {
                 if (!isDrawing) return;
                 isDrawing = false;
-
                 svgCanvas.off('mousemove touchmove');
 
-                // ❌ Reject less than 4 dots
                 if (activePattern.length < 4) {
                     resetUI();
                     return;
@@ -147,8 +183,6 @@
 
                 const patternStr = activePattern.map(d => d.dataset.id).join('');
                 submitPattern(patternStr);
-
-                // ✅ Mobile-style reset
                 resetUI();
             }
 
@@ -177,9 +211,9 @@
 
         })();
     </script>
-    <footer class="app-footer">
-    <span>© 2026 JetRock Research Team</span>
-</footer>
-</body>
 
+    <footer class="app-footer">
+        <span>© 2026 JetRock Research Team</span>
+    </footer>
+</body>
 </html>
